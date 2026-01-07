@@ -1,0 +1,1603 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>本地视频库服务器 - 使用手册</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary-color: #6c5ce7;
+            --primary-light: #a29bfe;
+            --primary-dark: #5a4fd4;
+            --accent-color: #fd79a8;
+            --accent-light: #ff9bc6;
+            --dark-color: #2d3436;
+            --dark-light: #636e72;
+            --light-color: #f8f9fa;
+            --light-gray: #dfe6e9;
+            --card-bg: rgba(255, 255, 255, 0.97);
+            --card-shadow: 0 10px 30px rgba(0, 0, 0, 0.12);
+            --header-height: 80px;
+            --transition-speed: 0.5s;
+            --content-width: 1200px;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        html {
+            scroll-behavior: smooth;
+            scroll-padding-top: 84px; /* 从85px调整为84px */
+        }
+        
+        body {
+            font-family: 'MiSans', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            line-height: 1.7;
+            color: var(--dark-color);
+            background: var(--dark-color);
+            overflow-x: hidden;
+        }
+        
+        /* 背景轮播系统 */
+        .background-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -2;
+            background: var(--dark-color);
+        }
+        
+        .bg-slide {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            opacity: 0;
+            transition: opacity var(--transition-speed) ease-in-out;
+            filter: brightness(0.4);
+        }
+        
+        .bg-slide.active {
+            opacity: 1;
+        }
+        
+        /* 导航栏 */
+        .navbar {
+            position: fixed;
+            top: 0;
+            width: 100%;
+            background: rgba(255, 255, 255, 0.98);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--light-gray);
+            z-index: 1000;
+            padding: 1rem 0;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+        }
+        
+        .nav-container {
+            max-width: var(--content-width);
+            margin: 0 auto;
+            padding: 0 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .logo {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--primary-color);
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .nav-links {
+            display: flex;
+            list-style: none;
+            gap: 1.5rem;
+        }
+        
+        .nav-links a {
+            text-decoration: none;
+            color: var(--dark-color);
+            font-weight: 500;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+        
+        .nav-links a:hover, .nav-links a.active {
+            color: var(--primary-color);
+        }
+        
+        .nav-links a::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            width: 0;
+            height: 2px;
+            background: var(--primary-color);
+            transition: all 0.3s ease;
+            transform: translateX(-50%);
+        }
+        
+        .nav-links a:hover::after, .nav-links a.active::after {
+            width: 80%;
+        }
+        
+        /* 移动端菜单按钮 */
+        .mobile-menu-btn {
+            display: none;
+            background: none;
+            border: none;
+            color: var(--primary-color);
+            font-size: 1.5rem;
+            cursor: pointer;
+        }
+        
+        /* 封面区域 */
+        .hero-section {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            color: white;
+            position: relative;
+            padding: 0 2rem;
+        }
+        
+        .hero-content {
+            max-width: 800px;
+            z-index: 10;
+            opacity: 0;
+            transform: translateY(30px);
+            animation: fadeInUp 1s ease forwards 0.5s;
+        }
+        
+        .hero-title {
+            font-size: 3.5rem;
+            font-weight: 800;
+            margin-bottom: 1.5rem;
+            text-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            line-height: 1.2;
+        }
+        
+        .hero-subtitle {
+            font-size: 1.3rem;
+            margin-bottom: 2.5rem;
+            opacity: 0.9;
+            line-height: 1.6;
+            text-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+        }
+        
+        .hero-actions {
+            display: flex;
+            gap: 1.5rem;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            background: var(--primary-color);
+            color: white;
+            padding: 0.9rem 2rem;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            border: none;
+            cursor: pointer;
+            min-height: 50px;
+            box-shadow: 0 4px 15px rgba(108, 92, 231, 0.3);
+        }
+        
+        .btn:hover {
+            background: var(--primary-dark);
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(108, 92, 231, 0.4);
+        }
+        
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            backdrop-filter: blur(10px);
+        }
+        
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.3);
+            border-color: rgba(255, 255, 255, 0.5);
+        }
+        
+        /* 主内容区域 */
+        .main-container {
+            position: relative;
+            background: var(--light-color);
+            border-radius: 30px 30px 0 0;
+            margin-top: -30px;
+            padding-top: 4rem;
+            box-shadow: 0 -20px 40px rgba(0, 0, 0, 0.1);
+        }
+        
+        /* 内容区块 */
+        .content-section {
+            max-width: var(--content-width);
+            margin: 0 auto;
+            padding: 4rem 2rem;
+            opacity: 0;
+            transform: translateY(30px);
+            transition: all 0.8s ease;
+        }
+        
+        .content-section.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        
+        .section-header {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+        
+        .section-title {
+            font-size: 2.5rem;
+            color: var(--primary-color);
+            margin-bottom: 1rem;
+            font-weight: 700;
+            position: relative;
+            display: inline-block;
+        }
+        
+        .section-title::after {
+            content: '';
+            position: absolute;
+            bottom: -10px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 60px;
+            height: 4px;
+            background: var(--accent-color);
+            border-radius: 2px;
+        }
+        
+        .section-subtitle {
+            font-size: 1.2rem;
+            color: var(--dark-light);
+            max-width: 700px;
+            margin: 0 auto;
+            line-height: 1.6;
+        }
+        
+        /* 统一文字排版格式 */
+        .text-content {
+            color: var(--dark-color);
+            line-height: 1.7;
+            font-size: 1.05rem;
+            margin-bottom: 1.5rem;
+        }
+        
+        .text-content p {
+            margin-bottom: 1.2rem;
+        }
+        
+        .text-content h3 {
+            font-size: 1.4rem;
+            color: var(--primary-color);
+            margin: 2rem 0 1rem 0;
+            font-weight: 600;
+        }
+        
+        .text-content h4 {
+            font-size: 1.2rem;
+            color: var(--primary-dark);
+            margin: 1.5rem 0 0.8rem 0;
+            font-weight: 600;
+        }
+        
+        .text-content ul, .text-content ol {
+            margin: 1rem 0 1.5rem 1.5rem;
+        }
+        
+        .text-content li {
+            margin-bottom: 0.5rem;
+        }
+        
+        /* 卡片组件 */
+        .card {
+            background: var(--card-bg);
+            border-radius: 16px;
+            padding: 2.5rem;
+            box-shadow: var(--card-shadow);
+            transition: all 0.3s ease;
+            border-left: 5px solid var(--primary-color);
+            margin-bottom: 2rem;
+        }
+        
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.15);
+        }
+        
+        .card-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+        
+        .card-icon {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, var(--primary-color), var(--primary-light));
+            color: white;
+            width: 60px;
+            height: 60px;
+            border-radius: 12px;
+            font-size: 1.5rem;
+            margin-right: 1.5rem;
+            flex-shrink: 0;
+        }
+        
+        .card-title {
+            font-size: 1.5rem;
+            color: var(--primary-color);
+            margin: 0;
+            font-weight: 600;
+        }
+        
+        /* 项目概述步骤容器 */
+        .overview-step-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 2rem;
+            margin-top: 2.5rem;
+        }
+        
+        .overview-step-item {
+            flex: 1;
+            min-width: 300px;
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 2rem;
+            text-align: center;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+            transition: all 0.3s ease;
+            border-top: 4px solid var(--primary-color);
+        }
+        
+        .overview-step-item:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.12);
+        }
+        
+        .overview-step-number {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, var(--primary-color), var(--primary-light));
+            color: white;
+            width: 50px; /* 减小图标尺寸 */
+            height: 50px; /* 减小图标尺寸 */
+            border-radius: 50%;
+            font-size: 1.4rem; /* 减小字体大小 */
+            font-weight: 700;
+            margin-bottom: 1.2rem;
+            box-shadow: 0 4px 10px rgba(108, 92, 231, 0.3);
+        }
+        
+        .overview-step-title {
+            font-size: 1.3rem; /* 增大标题字体 */
+            color: var(--primary-color);
+            margin-bottom: 1rem;
+            font-weight: 600;
+        }
+        
+        .overview-step-description {
+            color: var(--dark-light);
+            line-height: 1.6;
+        }
+        
+        /* 系统要求板块增强 */
+        .requirements-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            margin-top: 2rem;
+        }
+        
+        .requirement-item {
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 2rem;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+            transition: all 0.3s ease;
+            border-left: 4px solid var(--primary-light);
+        }
+        
+        .requirement-item:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+        }
+        
+        .requirement-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 50px;
+            height: 50px;
+            background: linear-gradient(135deg, var(--primary-color), var(--primary-light));
+            color: white;
+            border-radius: 10px;
+            font-size: 1.3rem;
+            margin-bottom: 1.2rem;
+        }
+        
+        .requirement-title {
+            font-size: 1.2rem;
+            color: var(--primary-color);
+            margin-bottom: 0.8rem;
+            font-weight: 600;
+        }
+        
+        .requirement-description {
+            color: var(--dark-color);
+            line-height: 1.6;
+        }
+        
+        /* 步骤组件 */
+        .step-container {
+            display: flex;
+            flex-direction: column;
+            gap: 2rem;
+            margin-top: 3rem;
+        }
+        
+        .step-item {
+            display: flex;
+            gap: 2rem;
+            align-items: flex-start;
+            opacity: 0;
+            transform: translateX(-20px);
+            transition: all 0.8s ease;
+        }
+        
+        .step-item.visible {
+            opacity: 1;
+            transform: translateX(0);
+        }
+        
+        .step-number {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, var(--primary-color), var(--primary-light));
+            color: white;
+            width: 60px; /* 减小尺寸 */
+            height: 60px; /* 减小尺寸 */
+            border-radius: 50%;
+            font-size: 1.5rem; /* 减小字体大小 */
+            font-weight: 700;
+            flex-shrink: 0;
+            box-shadow: 0 8px 20px rgba(108, 92, 231, 0.3);
+        }
+        
+        .step-content {
+            flex: 1;
+        }
+        
+        .step-title {
+            font-size: 1.4rem;
+            color: var(--primary-color);
+            margin-bottom: 1rem;
+            font-weight: 600;
+        }
+        
+        .step-description {
+            color: var(--dark-color);
+            line-height: 1.7;
+            margin-bottom: 1.5rem;
+        }
+        
+        /* 代码块样式 */
+        .code-block {
+            background: var(--dark-color);
+            color: #e2e8f0;
+            border-radius: 10px;
+            padding: 1.5rem;
+            margin: 1.5rem 0;
+            overflow-x: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 1rem;
+            line-height: 1.5;
+            border-left: 4px solid var(--accent-color);
+        }
+        
+        /* 下载链接样式 - 进一步调整滚动边距 */
+        .download-section {
+            text-align: center;
+            padding: 3rem 2rem;
+            background: linear-gradient(135deg, var(--primary-light), var(--primary-color));
+            border-radius: 20px;
+            margin: 3rem 0;
+            color: white;
+            /* 进一步减少滚动边距，从90px调整到84px */
+            scroll-margin-top: 84px;
+        }
+        
+        .download-title {
+            font-size: 2rem;
+            margin-bottom: 1rem;
+        }
+        
+        .download-link {
+            display: inline-block;
+            background: white;
+            color: var(--primary-color);
+            padding: 1rem 2.5rem;
+            border-radius: 10px;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 1.1rem;
+            margin-top: 1.5rem;
+            transition: all 0.3s ease;
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
+        }
+        
+        .download-link:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+        }
+        
+        /* 注意事项样式 - 统一格式 */
+        .notice-item {
+            background: rgba(253, 121, 168, 0.1);
+            border-left: 4px solid var(--accent-color);
+            padding: 1.5rem;
+            margin: 1.5rem 0;
+            border-radius: 0 8px 8px 0;
+        }
+        
+        .notice-title {
+            color: var(--accent-color);
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .notice-title i {
+            font-size: 1.1rem;
+        }
+        
+        .warning-item {
+            background: rgba(255, 193, 7, 0.1);
+            border-left: 4px solid #ffc107;
+            padding: 1.5rem;
+            margin: 1.5rem 0;
+            border-radius: 0 8px 8px 0;
+        }
+        
+        .warning-title {
+            color: #ff9800;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .warning-title i {
+            font-size: 1.1rem;
+        }
+        
+        .info-item {
+            background: rgba(33, 150, 243, 0.1);
+            border-left: 4px solid #2196f3;
+            padding: 1.5rem;
+            margin: 1.5rem 0;
+            border-radius: 0 8px 8px 0;
+        }
+        
+        .info-title {
+            color: #2196f3;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .info-title i {
+            font-size: 1.1rem;
+        }
+        
+        /* 动画效果 */
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        /* 响应式设计 - 平板 */
+        @media (max-width: 1024px) {
+            .hero-title {
+                font-size: 2.8rem;
+            }
+            
+            .section-title {
+                font-size: 2.2rem;
+            }
+            
+            .content-section {
+                padding: 3rem 1.5rem;
+            }
+            
+            .card {
+                padding: 2rem;
+            }
+            
+            .overview-step-container {
+                gap: 1.5rem;
+            }
+            
+            .overview-step-item {
+                min-width: calc(50% - 1.5rem);
+            }
+            
+            .requirements-grid {
+                grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+                gap: 1.5rem;
+            }
+            
+            .nav-container {
+                padding: 0 1.5rem;
+            }
+        }
+        
+        /* 响应式设计 - 手机 */
+        @media (max-width: 768px) {
+            .hero-title {
+                font-size: 2.2rem;
+            }
+            
+            .hero-subtitle {
+                font-size: 1.1rem;
+            }
+            
+            .hero-actions {
+                flex-direction: column;
+                align-items: center;
+                gap: 1rem;
+            }
+            
+            .btn {
+                width: 100%;
+                max-width: 300px;
+            }
+            
+            .nav-container {
+                padding: 0 1rem;
+            }
+            
+            .nav-links {
+                display: none;
+                position: fixed;
+                top: var(--header-height);
+                left: 0;
+                width: 100%;
+                background: rgba(255, 255, 255, 0.98);
+                flex-direction: column;
+                padding: 1rem;
+                box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            }
+            
+            .nav-links.active {
+                display: flex;
+            }
+            
+            .mobile-menu-btn {
+                display: block;
+            }
+            
+            .section-title {
+                font-size: 1.8rem;
+            }
+            
+            .card {
+                padding: 1.5rem;
+            }
+            
+            .card-header {
+                flex-direction: column;
+                text-align: center;
+                gap: 1rem;
+            }
+            
+            .card-icon {
+                margin-right: 0;
+            }
+            
+            .overview-step-container {
+                flex-direction: column;
+            }
+            
+            .overview-step-item {
+                min-width: 100%;
+            }
+            
+            .requirements-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .step-item {
+                flex-direction: column;
+                text-align: center;
+            }
+            
+            .step-number {
+                align-self: center;
+            }
+            
+            /* 移动端进一步调整下载部分的滚动边距 */
+            .download-section {
+                scroll-margin-top: 70px;
+            }
+            
+            .section-header {
+                margin-bottom: 2rem;
+            }
+        }
+        
+        /* 页脚 */
+        .footer {
+            background: var(--dark-color);
+            color: white;
+            text-align: center;
+            padding: 3rem 2rem;
+            margin-top: 4rem;
+        }
+        
+        .footer-title {
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+            color: var(--light-color);
+        }
+        
+        .footer-text {
+            color: var(--light-gray);
+            max-width: 600px;
+            margin: 0 auto;
+        }
+    </style>
+</head>
+<body>
+    <!-- 背景轮播系统 -->
+    <div class="background-container">
+        <div class="bg-slide" id="bgSlide1"></div>
+        <div class="bg-slide" id="bgSlide2"></div>
+        <div class="bg-slide" id="bgSlide3"></div>
+    </div>
+
+    <!-- 导航栏 -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="#" class="logo">
+                <i class="fas fa-film"></i>
+                <span>竹子のHome</span>
+            </a>
+            
+            <!-- 移动端菜单按钮 -->
+            <button class="mobile-menu-btn" id="mobileMenuBtn">
+                <i class="fas fa-bars"></i>
+            </button>
+            
+            <ul class="nav-links" id="navLinks">
+                <li><a href="#overview" class="active">项目概述</a></li>
+                <li><a href="#requirements">系统要求</a></li>
+                <li><a href="#deployment">部署指南</a></li>
+                <li><a href="#usage">使用教程</a></li>
+                <li><a href="#troubleshooting">故障排除</a></li>
+                <li><a href="#notes">注意事项</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- 封面区域 -->
+    <section class="hero-section">
+        <div class="hero-content">
+            <h1 class="hero-title">本地视频库服务器 - 使用手册</h1>
+            <p class="hero-subtitle">轻量级私有视频管理解决方案，三步快速部署，打造您的个人视频库</p>
+            <div class="hero-actions">
+                <a href="#deployment" class="btn">
+                    <i class="fas fa-rocket"></i> 开始部署
+                </a>
+                <a href="#download" class="btn btn-secondary">
+                    <i class="fas fa-download"></i> 下载项目
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- 主内容区域 -->
+    <div class="main-container">
+        <!-- 项目概述区块 -->
+        <section id="overview" class="content-section overview-section">
+            <div class="section-header">
+                <h2 class="section-title">项目概述</h2>
+                <p class="section-subtitle">本地视频库服务器是一个轻量级、易于部署的私有视频管理系统，专为个人用户和小型团队设计</p>
+            </div>
+            
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-icon">
+                        <i class="fas fa-play-circle"></i>
+                    </div>
+                    <h3 class="card-title">本地视频库服务器简介</h3>
+                </div>
+                <div class="card-content text-content">
+                    <p>通过以下三步简单部署，即可在局域网内建立专属的视频流媒体服务，实现在多种设备上安全、便捷地访问和管理本地视频内容。</p>
+                    
+                    <div class="overview-step-container">
+                        <div class="overview-step-item">
+                            <div class="overview-step-number">1</div>
+                            <h4 class="overview-step-title">环境部署</h4>
+                            <p class="overview-step-description">安装Python并配置防火墙端口，确保基础环境准备就绪</p>
+                        </div>
+                        
+                        <div class="overview-step-item">
+                            <div class="overview-step-number">2</div>
+                            <h4 class="overview-step-title">项目部署</h4>
+                            <p class="overview-step-description">下载项目文件并创建项目结构，快速搭建视频库服务器</p>
+                        </div>
+                        
+                        <div class="overview-step-item">
+                            <div class="overview-step-number">3</div>
+                            <h4 class="overview-step-title">视频添加</h4>
+                            <p class="overview-step-description">添加视频文件到视频库，开始享受您的个人视频流媒体服务</p>
+                        </div>
+                    </div>
+                    
+                    <div class="info-item">
+                        <div class="info-title">
+                            <i class="fas fa-info-circle"></i> 功能特点
+                        </div>
+                        <p>支持视频在线播放、批量管理、标签筛选、搜索功能，提供简洁直观的用户界面，无需复杂的配置即可快速搭建个人视频库。</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 系统要求区块 -->
+        <section id="requirements" class="content-section requirements-section">
+            <div class="section-header">
+                <h2 class="section-title">系统要求</h2>
+                <p class="section-subtitle">确保您的设备满足以下要求以获得最佳使用体验</p>
+            </div>
+            
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-icon">
+                        <i class="fas fa-server"></i>
+                    </div>
+                    <h3 class="card-title">硬件与软件要求</h3>
+                </div>
+                <div class="card-content text-content">
+                    <div class="requirements-grid">
+                        <div class="requirement-item">
+                            <div class="requirement-icon">
+                                <i class="fas fa-desktop"></i>
+                            </div>
+                            <h4 class="requirement-title">操作系统</h4>
+                            <p class="requirement-description">Windows 10/11, macOS 10.14+, Linux (Ubuntu 20.04+)</p>
+                        </div>
+                        
+                        <div class="requirement-item">
+                            <div class="requirement-icon">
+                                <i class="fab fa-python"></i>
+                            </div>
+                            <h4 class="requirement-title">Python环境</h4>
+                            <p class="requirement-description">Python 3.6 或更高版本，需确保Python已添加到系统PATH</p>
+                        </div>
+                        
+                        <div class="requirement-item">
+                            <div class="requirement-icon">
+                                <i class="fas fa-memory"></i>
+                            </div>
+                            <h4 class="requirement-title">内存要求</h4>
+                            <p class="requirement-description">最少 2GB RAM，建议4GB以上以获得更流畅的体验</p>
+                        </div>
+                        
+                        <div class="requirement-item">
+                            <div class="requirement-icon">
+                                <i class="fas fa-hdd"></i>
+                            </div>
+                            <h4 class="requirement-title">存储空间</h4>
+                            <p class="requirement-description">取决于视频库大小，建议预留足够空间存放视频文件</p>
+                        </div>
+                        
+                        <div class="requirement-item">
+                            <div class="requirement-icon">
+                                <i class="fas fa-network-wired"></i>
+                            </div>
+                            <h4 class="requirement-title">网络环境</h4>
+                            <p class="requirement-description">局域网环境，确保设备在同一网络下</p>
+                        </div>
+                        
+                        <div class="requirement-item">
+                            <div class="requirement-icon">
+                                <i class="fas fa-shield-alt"></i>
+                            </div>
+                            <h4 class="requirement-title">防火墙配置</h4>
+                            <p class="requirement-description">需要开放8080端口，允许局域网设备访问视频服务器</p>
+                        </div>
+                    </div>
+                    
+                    <div class="warning-item">
+                        <div class="warning-title">
+                            <i class="fas fa-exclamation-triangle"></i> 重要提示
+                        </div>
+                        <p>在开始部署前，请确保已正确安装Python并配置了系统环境变量。如果使用Windows系统，还需要配置防火墙允许8080端口的入站连接。</p>
+                    </div>
+                    
+                    <h3>环境部署详细要求</h3>
+                    
+                    <h4>Python安装与验证</h4>
+                    <p>访问Python官方网站下载最新版本，安装时务必勾选"Add Python to PATH"选项。</p>
+                    
+                    <div class="code-block">
+# 验证Python安装<br>
+# 打开命令提示符，输入以下命令：<br>
+python --version<br>
+# 如显示Python版本（如Python 3.9.0），则安装成功
+                    </div>
+                    
+                    <h4>防火墙端口配置</h4>
+                    <p>按Win+R键，输入wf.msc打开防火墙高级安全设置，创建8080端口的入站规则。</p>
+                    
+                    <div class="info-item">
+                        <div class="info-title">
+                            <i class="fas fa-info-circle"></i> 端口测试
+                        </div>
+                        <p>部署完成后，可以使用浏览器访问http://localhost:8080测试服务器是否正常运行，其他设备可以访问http://[服务器IP地址]:8080进行测试。</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 部署指南区块 -->
+        <section id="deployment" class="content-section deployment-section">
+            <div class="section-header">
+                <h2 class="section-title">三步部署指南</h2>
+                <p class="section-subtitle">按照以下步骤快速完成视频库服务器的部署</p>
+            </div>
+            
+            <!-- 步骤1：环境部署 -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-icon">
+                        <i class="fas fa-cogs"></i>
+                    </div>
+                    <h3 class="card-title">步骤1：环境部署</h3>
+                </div>
+                <div class="card-content text-content">
+                    <p>在开始项目部署前，需要确保系统环境已准备就绪，包括Python安装和防火墙配置。</p>
+                    
+                    <div class="notice-item">
+                        <div class="notice-title">
+                            <i class="fas fa-exclamation-circle"></i> 重要备注
+                        </div>
+                        <p>您也可以选择直接关闭系统防火墙，但这会降低系统的安全性，<strong>强烈不推荐</strong>这样做。正确配置防火墙端口规则是更安全、更专业的方法。</p>
+                    </div>
+                    
+                    <h4>视频教程参考</h4>
+                    <ul>
+                        <li><a href="https://www.bilibili.com/video/BV1f3411t73m/" target="_blank" style="color: var(--primary-color); text-decoration: none;">Python安装教程</a></li>
+                        <li><a href="https://www.bilibili.com/video/BV1Nv4y1u7ez/" target="_blank" style="color: var(--primary-color); text-decoration: none;">Windows端口测试和防火墙管控</a></li>
+                    </ul>
+                </div>
+            </div>
+            
+            <!-- 步骤2：项目部署 -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-icon">
+                        <i class="fas fa-folder-open"></i>
+                    </div>
+                    <h3 class="card-title">步骤2：项目部署</h3>
+                </div>
+                <div class="card-content text-content">
+                    <h4>创建项目目录</h4>
+                    <p>在您选择的目录下创建项目文件夹，目录名称可以为任意英文字母，例如：VideoLibrary。</p>
+                    
+                    <div class="code-block">
+# 示例：在D盘创建项目目录<br>
+mkdir D:\VideoLibrary<br>
+cd D:\VideoLibrary
+                    </div>
+                    
+                    <div class="warning-item">
+                        <div class="warning-title">
+                            <i class="fas fa-exclamation-triangle"></i> 重要提示
+                        </div>
+                        <p>为了兼容性考虑，不推荐使用中文、空格或特殊字符作为目录名。</p>
+                    </div>
+                    
+                    <h4>下载项目文件</h4>
+                    <p>下载以下核心项目文件到创建的目录中：</p>
+                    
+                    <ul>
+                        <li><strong>video_server.py</strong> - 主服务器文件，处理所有后端逻辑和API接口</li>
+                        <li><strong>start_server.bat</strong> - Windows启动脚本，简化服务器启动流程</li>
+                        <li><strong>video_library.html</strong> - 前端用户界面，提供视频播放和浏览功能</li>
+                        <li><strong>使用手册.html</strong> - 本使用手册的网页版，方便用户随时查阅</li>
+                    </ul>
+                </div>
+            </div>
+            
+            <!-- 步骤3：视频添加 -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-icon">
+                        <i class="fas fa-video"></i>
+                    </div>
+                    <h3 class="card-title">步骤3：视频添加</h3>
+                </div>
+                <div class="card-content text-content">
+                    <h4>初始化项目结构</h4>
+                    <p>运行启动脚本：双击 <code>start_server.bat</code>，系统将自动生成以下项目结构：</p>
+                    
+                    <div class="code-block">
+项目目录/<br>
+├── video_server.py          # 主服务器文件<br>
+├── start_server.bat         # Windows启动脚本<br>
+├── video_library.html       # 前端用户界面<br>
+├── 使用手册.html           # 本使用手册的网页版<br>
+├── videos/                  # 视频文件存储目录（自动生成）<br>
+├── thumbnails/             # 缩略图缓存目录（自动生成）<br>
+└── video_library.db        # SQLite数据库文件（自动生成）
+                    </div>
+                    
+                    <h4>添加视频文件</h4>
+                    <p>将MP4格式的视频文件放入 <code>videos</code> 文件夹，启动服务器后，在浏览器中访问视频库，然后点击批量添加功能添加视频。</p>
+                    
+                    <div class="notice-item">
+                        <div class="notice-title">
+                            <i class="fas fa-exclamation-circle"></i> 注意
+                        </div>
+                        <p>当前版本不支持二级目录，请将所有视频文件直接放在videos目录下。</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 下载链接 -->
+            <div id="download" class="download-section">
+                <h3 class="download-title">获取项目文件</h3>
+                <p>点击下方按钮下载本地视频库服务器项目文件，开始打造您的个人视频库</p>
+                <!-- 修复下载链接，直接跳转到GitHub -->
+                <a href="https://github.com/Ht-ui/Takeko-Home.git" class="download-link" target="_blank">
+                    <i class="fas fa-download"></i> 下载项目文件
+                </a>
+                <p style="margin-top: 1rem; opacity: 0.9; font-size: 0.9rem;">项目下载地址：https://github.com/Ht-ui/Takeko-Home.git</p>
+            </div>
+        </section>
+
+        <!-- 使用教程区块 -->
+        <section id="usage" class="content-section usage-section">
+            <div class="section-header">
+                <h2 class="section-title">使用教程</h2>
+                <p class="section-subtitle">掌握视频库的各项功能，高效管理您的视频资源</p>
+            </div>
+            
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-icon">
+                        <i class="fas fa-play-circle"></i>
+                    </div>
+                    <h3 class="card-title">启动与访问</h3>
+                </div>
+                <div class="card-content text-content">
+                    <h4>启动服务器</h4>
+                    <p>运行启动脚本：Windows用户双击 <code>start_server.bat</code>，其他系统在命令行中执行 <code>python video_server.py</code>。</p>
+                    
+                    <h4>访问视频库</h4>
+                    <ul>
+                        <li><strong>本机访问：</strong> 在浏览器中输入：<code>http://localhost:8080</code></li>
+                        <li><strong>局域网访问：</strong> 其他设备访问：<code>http://[服务器IP地址]:8080</code></li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-icon">
+                        <i class="fas fa-list"></i>
+                    </div>
+                    <h3 class="card-title">核心功能</h3>
+                </div>
+                <div class="card-content text-content">
+                    <h4>批量添加视频</h4>
+                    <p>将视频文件移动到项目视频目录 <code>videos</code> 内，在视频库页面点击批量按钮，填写对应的年份和番组，选择需要添加的视频，点击保存按钮执行批量添加。</p>
+                    
+                    <div class="notice-item">
+                        <div class="notice-title">
+                            <i class="fas fa-exclamation-circle"></i> 注意
+                        </div>
+                        <p>只能添加项目视频目录内的视频，且不支持二级目录。</p>
+                    </div>
+                    
+                    <h4>编辑模式</h4>
+                    <p>点击页面顶部的编辑按钮进入编辑模式，支持全选、单选、批量编辑和批量删除功能。</p>
+                    
+                    <div class="notice-item">
+                        <div class="notice-title">
+                            <i class="fas fa-exclamation-circle"></i> 删除说明
+                        </div>
+                        <p>删除功能执行的是软删除，删除视频卡片后项目视频目录内的视频不会被删除，仍然会保留在视频目录中。这是为了避免误删而设计的方案，但如果硬盘容量告急，记得适当清理视频目录的视频资源。</p>
+                    </div>
+                    
+                    <h4>搜索与筛选</h4>
+                    <p>添加视频后，系统会根据视频的年份、番组等属性生成标签，点击对应的标签可筛选视频。在搜索框中输入关键词可按视频标题进行搜索，支持模糊搜索。</p>
+                    
+                    <h4>单独编辑与删除</h4>
+                    <p>鼠标悬停在视频卡片上，右上角会显示编辑按钮和删除按钮。编辑功能支持修改视频标题、年份、番组以及自定义缩略图。删除按钮可删除单个视频卡片（软删除）。</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- 故障排除区块 -->
+        <section id="troubleshooting" class="content-section troubleshooting-section">
+            <div class="section-header">
+                <h2 class="section-title">故障排除</h2>
+                <p class="section-subtitle">遇到问题？请参考以下解决方案</p>
+            </div>
+            
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-icon">
+                        <i class="fas fa-exclamation-triangle"></i>
+                    </div>
+                    <h3 class="card-title">常见问题与解决方案</h3>
+                </div>
+                <div class="card-content text-content">
+                    <h4>1. 服务器无法正常启动</h4>
+                    <ul>
+                        <li><strong>Python未正确安装：</strong> 检查Python是否安装，在命令行输入 <code>python --version</code></li>
+                        <li><strong>端口被占用：</strong> 检查8080端口是否被其他程序占用，常用命令：<code>netstat -ano | findstr :8080</code></li>
+                        <li><strong>防火墙阻止：</strong> 确认防火墙已正确配置8080端口规则</li>
+                    </ul>
+                    
+                    <h4>2. 视频无法播放</h4>
+                    <ul>
+                        <li><strong>视频格式不支持：</strong> 确认视频格式为MP4，可使用格式转换工具转换为H.264编码的MP4</li>
+                        <li><strong>文件路径错误：</strong> 确认视频文件在 <code>videos</code> 目录下</li>
+                        <li><strong>浏览器兼容性问题：</strong> 尝试使用Chrome、Edge等现代浏览器</li>
+                    </ul>
+                    
+                    <h4>3. 局域网设备无法访问</h4>
+                    <ul>
+                        <li><strong>防火墙设置问题：</strong> 确认已创建8080端口入站规则</li>
+                        <li><strong>IP地址错误：</strong> 确认使用的是正确的服务器IP地址</li>
+                        <li><strong>网络连接问题：</strong> 确认所有设备在同一局域网</li>
+                    </ul>
+                    
+                    <h4>4. 视频播放卡顿，黑屏，无加载</h4>
+                    <ul>
+                        <li><strong>客户端设备兼容性问题：</strong> 检查播放设备使用的浏览器是否为最新版本，尝试更新浏览器</li>
+                        <li><strong>服务器宕机问题：</strong> 初始化页面后，第一次启动时，主机端拖拽视频进度条等操作可能导致服务器宕机。此时<strong>不要关闭页面</strong>，重启服务器即可解决。重启方法：关闭服务器脚本，重新运行 <code>start_server.bat</code></li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <!-- 注意事项区块 -->
+        <section id="notes" class="content-section notes-section">
+            <div class="section-header">
+                <h2 class="section-title">注意事项</h2>
+                <p class="section-subtitle">使用前请仔细阅读以下注意事项</p>
+            </div>
+            
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-icon">
+                        <i class="fas fa-exclamation-circle"></i>
+                    </div>
+                    <h3 class="card-title">重要提醒</h3>
+                </div>
+                <div class="card-content text-content">
+                    <div class="notice-item">
+                        <div class="notice-title">
+                            <i class="fas fa-exclamation-circle"></i> 视频文件管理
+                        </div>
+                        <p>当前版本不支持二级目录，请将所有视频文件直接放在videos目录下。</p>
+                    </div>
+                    
+                    <div class="notice-item">
+                        <div class="notice-title">
+                            <i class="fas fa-exclamation-circle"></i> 设备访问限制
+                        </div>
+                        <p>系统不支持异步访问，同一时间只能有一个设备进行视频播放操作。</p>
+                    </div>
+                    
+                    <div class="notice-item">
+                        <div class="notice-title">
+                            <i class="fas fa-exclamation-circle"></i> 视频格式兼容性
+                        </div>
+                        <p>建议使用H.264编码的MP4格式，以确保在所有浏览器中正常播放。</p>
+                    </div>
+                    
+                    <div class="notice-item">
+                        <div class="notice-title">
+                            <i class="fas fa-exclamation-circle"></i> 文件命名规范
+                        </div>
+                        <p>建议使用英文命名视频文件，避免中文字符可能导致的问题。</p>
+                    </div>
+                    
+                    <div class="info-item">
+                        <div class="info-title">
+                            <i class="fas fa-info-circle"></i> 定期维护
+                        </div>
+                        <p>建议定期清理不常用的视频文件，保持系统运行效率。</p>
+                    </div>
+                    
+                    <div class="warning-item">
+                        <div class="warning-title">
+                            <i class="fas fa-exclamation-triangle"></i> 删除注意事项
+                        </div>
+                        <p>删除视频卡片是软删除，不会删除物理视频文件，如需彻底删除，需手动清理videos目录。</p>
+                    </div>
+                    
+                    <div class="info-item">
+                        <div class="info-title">
+                            <i class="fas fa-info-circle"></i> 缩略图管理
+                        </div>
+                        <p>自定义缩略图会上传到thumbnails目录，如需清理，可删除此目录下的文件。</p>
+                    </div>
+                    
+                    <div class="info-item">
+                        <div class="info-title">
+                            <i class="fas fa-info-circle"></i> 数据备份
+                        </div>
+                        <p>定期备份video_library.db数据库文件，防止数据丢失。</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 页脚 -->
+        <footer class="footer">
+            <h3 class="footer-title">竹子のHome - 本地视频库服务器</h3>
+            <p class="footer-text">专业可靠的个人视频库解决方案 | 轻量级私有视频流媒体服务</p>
+        </footer>
+    </div>
+
+    <script>
+        // 背景轮切功能
+        class BackgroundSlideshow {
+            constructor() {
+                this.slides = [
+                    document.getElementById('bgSlide1'),
+                    document.getElementById('bgSlide2'),
+                    document.getElementById('bgSlide3')
+                ];
+                this.currentIndex = 0;
+                this.isTransitioning = false;
+                this.imageCache = new Map();
+                this.init();
+            }
+            
+            init() {
+                this.setInitialBackground();
+                this.startAutoSwitch();
+            }
+            
+            setInitialBackground() {
+                this.loadImage('https://www.loliapi.com/acg/').then(url => {
+                    this.slides[0].style.backgroundImage = `url('${url}')`;
+                    this.slides[0].classList.add('active');
+                }).catch(() => {
+                    this.slides[0].style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
+                    this.slides[0].classList.add('active');
+                });
+            }
+            
+            async switchBackground() {
+                if (this.isTransitioning) return;
+                this.isTransitioning = true;
+                
+                try {
+                    const timestamp = Date.now();
+                    const imageUrl = `https://www.loliapi.com/acg/?t=${timestamp}`;
+                    
+                    await this.loadImage(imageUrl);
+                    
+                    const currentSlide = this.slides[this.currentIndex];
+                    const nextIndex = (this.currentIndex + 1) % this.slides.length;
+                    const nextSlide = this.slides[nextIndex];
+                    
+                    nextSlide.style.backgroundImage = `url('${imageUrl}')`;
+                    nextSlide.style.opacity = '0';
+                    nextSlide.classList.add('active');
+                    
+                    setTimeout(() => {
+                        nextSlide.style.opacity = '1';
+                    }, 10);
+                    
+                    if (currentSlide.classList.contains('active')) {
+                        currentSlide.style.opacity = '0';
+                        
+                        setTimeout(() => {
+                            currentSlide.classList.remove('active');
+                        }, 500);
+                    }
+                    
+                    this.currentIndex = nextIndex;
+                    
+                } catch (error) {
+                    console.warn('网络图片加载失败，使用渐变背景');
+                    this.useGradientBackground();
+                } finally {
+                    setTimeout(() => {
+                        this.isTransitioning = false;
+                    }, 1000);
+                }
+            }
+            
+            loadImage(url) {
+                return new Promise((resolve, reject) => {
+                    if (this.imageCache.has(url)) {
+                        resolve(this.imageCache.get(url));
+                        return;
+                    }
+                    
+                    const img = new Image();
+                    img.onload = () => {
+                        this.imageCache.set(url, url);
+                        resolve(url);
+                    };
+                    img.onerror = () => {
+                        reject();
+                    };
+                    img.src = url;
+                });
+            }
+            
+            useGradientBackground() {
+                const currentSlide = this.slides[this.currentIndex];
+                const nextIndex = (this.currentIndex + 1) % this.slides.length;
+                const nextSlide = this.slides[nextIndex];
+                const gradients = [
+                    'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                    'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
+                    'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)'
+                ];
+                
+                nextSlide.style.background = gradients[nextIndex];
+                nextSlide.style.backgroundImage = '';
+                nextSlide.style.opacity = '0';
+                nextSlide.classList.add('active');
+                
+                setTimeout(() => {
+                    nextSlide.style.opacity = '1';
+                }, 10);
+                
+                if (currentSlide.classList.contains('active')) {
+                    currentSlide.style.opacity = '0';
+                    
+                    setTimeout(() => {
+                        currentSlide.classList.remove('active');
+                    }, 500);
+                }
+                
+                this.currentIndex = nextIndex;
+            }
+            
+            startAutoSwitch(interval = 5000) {
+                setInterval(() => {
+                    this.switchBackground();
+                }, interval);
+            }
+        }
+        
+        // 移动端菜单功能
+        const mobileMenuBtn = document.getElementById('mobileMenuBtn');
+        const navLinks = document.getElementById('navLinks');
+        
+        if (mobileMenuBtn && navLinks) {
+            mobileMenuBtn.addEventListener('click', function() {
+                navLinks.classList.toggle('active');
+            });
+            
+            // 点击链接后关闭移动菜单
+            navLinks.querySelectorAll('a').forEach(link => {
+                link.addEventListener('click', function() {
+                    navLinks.classList.remove('active');
+                });
+            });
+        }
+        
+        // 滚动动画和导航
+        document.addEventListener('DOMContentLoaded', function() {
+            // 初始化背景轮切
+            window.backgroundSlideshow = new BackgroundSlideshow();
+            
+            const sections = document.querySelectorAll('.content-section');
+            const stepItems = document.querySelectorAll('.step-item');
+            const navLinks = document.querySelectorAll('.nav-links a');
+            const downloadSection = document.querySelector('#download');
+            
+            // 滚动显示动画
+            function checkScroll() {
+                const triggerBottom = window.innerHeight * 0.85;
+                
+                // 内容区域动画
+                sections.forEach(section => {
+                    const sectionTop = section.getBoundingClientRect().top;
+                    
+                    if (sectionTop < triggerBottom) {
+                        section.classList.add('visible');
+                    }
+                });
+                
+                // 步骤项动画
+                stepItems.forEach((item, index) => {
+                    const itemTop = item.getBoundingClientRect().top;
+                    
+                    if (itemTop < triggerBottom) {
+                        setTimeout(() => {
+                            item.classList.add('visible');
+                        }, index * 200);
+                    }
+                });
+                
+                // 导航栏高亮
+                let currentSection = '';
+                const scrollPosition = window.scrollY + 130;
+                
+                // 检查每个区块的位置
+                sections.forEach(section => {
+                    const sectionTop = section.offsetTop;
+                    const sectionBottom = sectionTop + section.offsetHeight;
+                    
+                    if (scrollPosition >= sectionTop && scrollPosition < sectionBottom) {
+                        currentSection = section.getAttribute('id');
+                    }
+                });
+                
+                // 下载区域单独处理
+                if (downloadSection) {
+                    const downloadTop = downloadSection.offsetTop;
+                    const downloadBottom = downloadTop + downloadSection.offsetHeight;
+                    
+                    if (scrollPosition >= downloadTop && scrollPosition < downloadBottom) {
+                        currentSection = 'download';
+                    }
+                }
+                
+                // 如果没有匹配到任何内容区块，检查是否在封面区域
+                if (!currentSection && window.scrollY < 100) {
+                    // 在封面区域，清除所有高亮
+                    navLinks.forEach(link => link.classList.remove('active'));
+                    return;
+                }
+                
+                // 更新活动导航链接
+                navLinks.forEach(link => {
+                    link.classList.remove('active');
+                    if (link.getAttribute('href') === '#' + currentSection) {
+                        link.classList.add('active');
+                    }
+                });
+            }
+            
+            // 平滑滚动导航
+            navLinks.forEach(link => {
+                link.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const targetId = this.getAttribute('href');
+                    
+                    // 处理下载区域的特殊滚动
+                    if (targetId === '#download') {
+                        if (downloadSection) {
+                            // 针对下载区域使用特殊滚动位置
+                            const offset = 84; // 从90px调整到84px
+                            const targetPosition = downloadSection.offsetTop - offset;
+                            window.scrollTo({
+                                top: targetPosition,
+                                behavior: 'smooth'
+                            });
+                            
+                            // 更新URL哈希
+                            history.pushState(null, null, targetId);
+                            
+                            // 更新活动导航链接
+                            navLinks.forEach(l => l.classList.remove('active'));
+                            this.classList.add('active');
+                        }
+                    } else {
+                        // 其他区块使用正常滚动
+                        const targetSection = document.querySelector(targetId);
+                        if (targetSection) {
+                            // 使用原生的scrollIntoView方法
+                            targetSection.scrollIntoView({
+                                behavior: 'smooth',
+                                block: 'start'
+                            });
+                            
+                            // 更新活动导航链接
+                            navLinks.forEach(l => l.classList.remove('active'));
+                            this.classList.add('active');
+                            
+                            // 更新URL哈希
+                            history.pushState(null, null, targetId);
+                        }
+                    }
+                });
+            });
+            
+            // 页面加载时的哈希定位
+            if (window.location.hash) {
+                const targetId = window.location.hash;
+                
+                if (targetId === '#download') {
+                    // 处理下载区域的哈希定位
+                    if (downloadSection) {
+                        setTimeout(() => {
+                            const offset = 84; // 从90px调整到84px
+                            const targetPosition = downloadSection.offsetTop - offset;
+                            window.scrollTo({
+                                top: targetPosition,
+                                behavior: 'smooth'
+                            });
+                        }, 100);
+                    }
+                } else {
+                    // 处理其他区块的哈希定位
+                    const targetElement = document.querySelector(targetId);
+                    if (targetElement) {
+                        setTimeout(() => {
+                            targetElement.scrollIntoView({
+                                behavior: 'smooth',
+                                block: 'start'
+                            });
+                        }, 100);
+                    }
+                }
+            }
+            
+            // 初始检查
+            checkScroll();
+            
+            // 滚动事件监听
+            window.addEventListener('scroll', checkScroll);
+            
+            // 初始显示可见区域
+            setTimeout(checkScroll, 100);
+        });
+    </script>
+</body>
+</html>
